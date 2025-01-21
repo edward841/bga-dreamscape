@@ -49,12 +49,18 @@
 
 //    !! It is not a good idea to modify this file when a game is running !!
 
+// Named constants
+if (!defined('STATE_END_GAME'))
+{
+    define('STATE_START_GAME', 1);
+    define('STATE_END_GAME', 99);
+}
 
 $machinestates = [
 
     // The initial state. Please do not modify.
 
-    1 => array(
+    STATE_START_GAME => array(
         "name" => "gameSetup",
         "description" => "",
         "type" => "manager",
@@ -84,12 +90,12 @@ $machinestates = [
         "type" => "game",
         "action" => "stNextPlayer",
         "updateGameProgression" => true,
-        "transitions" => ["endGame" => 99, "nextPlayer" => 2]
+        "transitions" => ["endGame" => STATE_END_GAME, "nextPlayer" => 2]
     ],
 
     // Final state.
     // Please do not modify (and do not overload action/args methods).
-    99 => [
+    STATE_END_GAME => [
         "name" => "gameEnd",
         "description" => clienttranslate("End of game"),
         "type" => "manager",
