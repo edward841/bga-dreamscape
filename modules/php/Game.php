@@ -45,44 +45,6 @@ class Game extends \Table
 
     }
 
-//    /**
-//     * Player action, example content.
-//     *
-//     * In this scenario, each time a player plays a card, this method will be called. This method is called directly
-//     * by the action trigger on the front side with `bgaPerformAction`.
-//     *
-//     * @throws BgaUserException
-//     */
-//    public function actPlayCard(int $card_id): void
-//    {
-//        // Retrieve the active player ID.
-//        $player_id = (int)$this->getActivePlayerId();
-//
-//        // check input values
-//        $args = $this->argPlayerTurn();
-//        $playableCardsIds = $args['playableCardsIds'];
-//        if (!in_array($card_id, $playableCardsIds)) {
-//            throw new \BgaUserException('Invalid card choice');
-//        }
-//
-//        // Add your game logic to play a card here.
-//        $card_name = self::$CARD_TYPES[$card_id]['card_name'];
-//
-//        // Notify all players about the card played.
-//        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} plays ${card_name}'), [
-//            "player_id" => $player_id,
-//            "player_name" => $this->getActivePlayerName(),
-//            "card_name" => $card_name,
-//            "card_id" => $card_id,
-//            "i18n" => ['card_name'],
-//        ]);
-//
-//        // at the end of the action, move to the next state
-//        $this->gamestate->nextState("playCard");
-//    }
-
-
-
     /**
      * Compute and return the current game progression.
      *
@@ -99,25 +61,6 @@ class Game extends \Table
 
         return 0;
     }
-
-//L    /**
-//L     * Game state action, example content.
-//L     *
-//L     * The action method of state `nextPlayer` is called everytime the current game state is set to `nextPlayer`.
-//L     */
-//L    public function stNextPlayer(): void {
-//L        // Retrieve the active player ID.
-//L        $player_id = (int)$this->getActivePlayerId();
-//L
-//L        // Give some extra time to the active player when he completed an action
-//L        $this->giveExtraTime($player_id);
-//L        
-//L        $this->activeNextPlayer();
-//L
-//L        // Go to another gamestate
-//L        // Here, we would detect if the game is over, and in this case use "endGame" transition instead 
-//L        $this->gamestate->nextState("nextPlayer");
-//L    }
 
     /**
      * Migrate database.
@@ -233,16 +176,38 @@ class Game extends \Table
 	//
 	public function stTravelHelper()
 	{
+		$player_id = (int)$this->getActivePlayerId();
+		$this->giveExtraTime($player_id);
+
+		$this->activeNextPlayer();
+
+		// If anyone has not yet had a travel phase, give them a chance.
+		// If everyone has completed their travel phase, instead move on to the creation phase.
+
+
+		$turn_order = $this->getCollectionFromDb("SELECT player_id, player_no FROM player", true);
+		if ((int)$turn_order[$player_id] < $this->getPlayersNumber())
+    		$this->gamestate->nextState("nextPlayer");	
+		else
+			$this->gamestate->nextState("nextPhase");
 	}
 
 	public function stCreationHelper()
 	{
-
+		// TODO I am quite certain the travel and creation helpers will be distinct.
+		// For now, they are functionally the same but I separated them here to make it clear they probably should be separate
+		// If this is still here when game logic is complete, then they can clearly be consolidated to one function
+		$this->stTravelHelper();
 	}
 	
-	public function stEmergence()
+	public function stEmergence() 
 	{
-
+		// If there are still rounds to play (we are not on round 6 yet), then start another round.
+		// If it is the final round (round 6), then move on to the game's final stages.
+		if (true)
+			$this->gamestate->nextState("nextRound");
+		else
+			$this->gamestate->nextState("finalStages");	
 	}
 
 	public function stFinalCreationHelper()
@@ -292,8 +257,10 @@ class Game extends \Table
 	public function actPass(): void
     {
         // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
+        //$player_id = (int)$this->getActivePlayerId();
 
+		// No transition necessary since there is only one transition out of active player states
+		$this->gamestate->nextState();
 	}
 
 	public function actPlaceElement()
@@ -310,16 +277,16 @@ class Game extends \Table
 	//
 	//	Helper/Utility functions	
 	//
-	private function startNextPlayer() : boolean
-	{	
-		$player_id = (int)$this->getActivePlayerId();
-		$turn_order = $this->getCollectionFromDb("SELECT player_id, custom_order FROM player", true);
-		if ($turn_order[$player_id] == getPlayersNumber())
-			return false;
-
-
-		return true;
-	}
+//	private function startNextPlayer() : boolean
+//	{	
+//		$player_id = (int)$this->getActivePlayerId();
+//		$turn_order = $this->getCollectionFromDb("SELECT player_id, custom_order FROM player", true);
+//		if ($turn_order[$player_id] == getPlayersNumber())
+//			return false;
+//
+//
+//		return true;
+//	}
 
 
 
