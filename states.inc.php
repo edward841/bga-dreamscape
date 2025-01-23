@@ -50,52 +50,123 @@
 //    !! It is not a good idea to modify this file when a game is running !!
 
 // Named constants
-if (!defined('STATE_END_GAME'))
+if (!defined('END_GAME'))
 {
-    define('STATE_START_GAME', 1);
-    define('STATE_END_GAME', 99);
+    define('START_GAME', 1);
+    define('TRAVEL_PHASE', 2);
+    define('TRAVEL_HELPER', 3);
+    define('CREATION_PHASE', 20);
+    define('CREATION_HELPER', 21);
+    define('EMERGENCE', 30);
+    define('FINAL_CREATION', 40);
+    define('FINAL_CREATION_HELPER', 41);
+    define('END_GAME', 99);
 }
 
 $machinestates = [
 
     // The initial state. Please do not modify.
 
-    STATE_START_GAME => array(
+    START_GAME => array(
         "name" => "gameSetup",
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => 2]
+        "transitions" => ["" => TRAVEL_PHASE]
     ),
 
     // Note: ID=2 => your first state
 
-    2 => [
-        "name" => "playerTurn",
-        "description" => clienttranslate('${actplayer} must play a card or pass'),
-        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
+//    2 => [
+//        "name" => "playerTurn",
+//        "description" => clienttranslate('${actplayer} must play a card or pass'),
+//        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
+//        "type" => "activeplayer",
+//        "args" => "argPlayerTurn",
+//        "possibleactions" => [
+//            // these actions are called from the front with bgaPerformAction, and matched to the function on the game.php file
+//            "actPlayCard", 
+//            "actPass",
+//        ],
+//        "transitions" => ["playCard" => 3, "pass" => 3]
+//    ],
+//
+//    3 => [
+//        "name" => "nextPlayer",
+//        "description" => '',
+//        "type" => "game",
+//        "action" => "stNextPlayer",
+//        "updateGameProgression" => true,
+//        "transitions" => ["endGame" => END_GAME, "nextPlayer" => 2]
+//    ],
+//
+    TRAVEL_PHASE => [
+        "name" => "travelPhase",
+        "description" => clienttranslate('${actplayer} must do their travel phase'),
+        "descriptionmyturn" => clienttranslate('${you} must do your travel phase'),
         "type" => "activeplayer",
-        "args" => "argPlayerTurn",
-        "possibleactions" => [
-            // these actions are called from the front with bgaPerformAction, and matched to the function on the game.php file
-            "actPlayCard", 
-            "actPass",
-        ],
-        "transitions" => ["playCard" => 3, "pass" => 3]
+//        "args" => "argTravelPhase", // Information is definitely needed here, about just about everything.
+        "possibleactions" => ["actMoveSleeper", "actCollectShard", "actLocationAbility", "actCardAbility", "actPass"],
+        "transitions" => ["" => TRAVEL_HELPER]
     ],
 
-    3 => [
-        "name" => "nextPlayer",
+    TRAVEL_HELPER => [
+        "name" => "travelHelper",
+        "description" => '', 
+        "type" => "game",
+        "action" => "stTravelHelper",
+        "updateGameProgression" => true,
+        "transitions" => ["nextPlayer" => TRAVEL_PHASE, "nextPhase" => CREATION_PHASE]
+    ],
+
+    CREATION_PHASE => [
+        "name" => "creationPhase",
+        "description" => clienttranslate('${actplayer} must do their creation phase'),
+        "descriptionmyturn" => clienttranslate('${you} must do your creation phase'),
+        "type" => "activeplayer",
+//        "args" => "argCreationPhase",
+        "possibleactions" => ["actPlaceElement", "actPlaceDreamer", "actDiscardShard", "actCardAbility", "actPass"],
+        "transitions" => ["" => CREATION_HELPER]
+    ],
+    
+    CREATION_HELPER => [
+        "name" => "creationHelper",
+        "description" => '', 
+        "type" => "game",
+        "action" => "stCreationHelper",
+        "updateGameProgression" => true,
+        "transitions" => ["nextPlayer" => CREATION_PHASE, "nextPhase" => EMERGENCE]
+    ],
+
+    EMERGENCE => [
+        "name" => "emergence",
         "description" => '',
         "type" => "game",
-        "action" => "stNextPlayer",
+        "action" => "stEmergence",
+        "transitions" => ["nextRound" => TRAVEL_PHASE, "finalStages" => FINAL_CREATION]
+    ],
+
+    FINAL_CREATION => [
+        "name" => "finalCreation",
+        "description" => clienttranslate('${actplayer} must use the last of their shards'),
+        "descriptionmyturn" => clienttranslate('${you} must use the last of your shards'),
+        "type" => "activeplayer",
+        "possibleactions" => ["actPlaceElement", "actDiscardShard"], 
+        "transitions" => ["" => FINAL_CREATION_HELPER]
+    ],
+
+    FINAL_CREATION_HELPER => [
+        "name" => "finalCreationHelper",
+        "description" => '',
+        "type" => "game",
+        "action" => "stFinalCreationHelper",
         "updateGameProgression" => true,
-        "transitions" => ["endGame" => STATE_END_GAME, "nextPlayer" => 2]
+        "transitions" => ["nextPlayer" => FINAL_CREATION, "endGame" => END_GAME]
     ],
 
     // Final state.
     // Please do not modify (and do not overload action/args methods).
-    STATE_END_GAME => [
+    END_GAME => [
         "name" => "gameEnd",
         "description" => clienttranslate("End of game"),
         "type" => "manager",

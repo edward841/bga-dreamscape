@@ -22,8 +22,6 @@ require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
 class Game extends \Table
 {
-    private static array $CARD_TYPES;
-
     /**
      * Your global variables labels:
      *
@@ -45,84 +43,45 @@ class Game extends \Table
             "my_second_game_variant" => 101,
         ]);        
 
-        self::$CARD_TYPES = [
-            1 => [
-                "card_name" => clienttranslate('Troll'), // ...
-            ],
-            2 => [
-                "card_name" => clienttranslate('Goblin'), // ...
-            ],
-            // ...
-        ];
     }
 
-    /**
-     * Player action, example content.
-     *
-     * In this scenario, each time a player plays a card, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     *
-     * @throws BgaUserException
-     */
-    public function actPlayCard(int $card_id): void
-    {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
+//    /**
+//     * Player action, example content.
+//     *
+//     * In this scenario, each time a player plays a card, this method will be called. This method is called directly
+//     * by the action trigger on the front side with `bgaPerformAction`.
+//     *
+//     * @throws BgaUserException
+//     */
+//    public function actPlayCard(int $card_id): void
+//    {
+//        // Retrieve the active player ID.
+//        $player_id = (int)$this->getActivePlayerId();
+//
+//        // check input values
+//        $args = $this->argPlayerTurn();
+//        $playableCardsIds = $args['playableCardsIds'];
+//        if (!in_array($card_id, $playableCardsIds)) {
+//            throw new \BgaUserException('Invalid card choice');
+//        }
+//
+//        // Add your game logic to play a card here.
+//        $card_name = self::$CARD_TYPES[$card_id]['card_name'];
+//
+//        // Notify all players about the card played.
+//        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} plays ${card_name}'), [
+//            "player_id" => $player_id,
+//            "player_name" => $this->getActivePlayerName(),
+//            "card_name" => $card_name,
+//            "card_id" => $card_id,
+//            "i18n" => ['card_name'],
+//        ]);
+//
+//        // at the end of the action, move to the next state
+//        $this->gamestate->nextState("playCard");
+//    }
 
-        // check input values
-        $args = $this->argPlayerTurn();
-        $playableCardsIds = $args['playableCardsIds'];
-        if (!in_array($card_id, $playableCardsIds)) {
-            throw new \BgaUserException('Invalid card choice');
-        }
 
-        // Add your game logic to play a card here.
-        $card_name = self::$CARD_TYPES[$card_id]['card_name'];
-
-        // Notify all players about the card played.
-        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} plays ${card_name}'), [
-            "player_id" => $player_id,
-            "player_name" => $this->getActivePlayerName(),
-            "card_name" => $card_name,
-            "card_id" => $card_id,
-            "i18n" => ['card_name'],
-        ]);
-
-        // at the end of the action, move to the next state
-        $this->gamestate->nextState("playCard");
-    }
-
-    public function actPass(): void
-    {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
-
-        // Notify all players about the choice to pass.
-        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} passes'), [
-            "player_id" => $player_id,
-            "player_name" => $this->getActivePlayerName(),
-        ]);
-
-        // at the end of the action, move to the next state
-        $this->gamestate->nextState("pass");
-    }
-
-    /**
-     * Game state arguments, example content.
-     *
-     * This method returns some additional information that is very specific to the `playerTurn` game state.
-     *
-     * @return array
-     * @see ./states.inc.php
-     */
-    public function argPlayerTurn(): array
-    {
-        // Get some values from the current game situation from the database.
-
-        return [
-            "playableCardsIds" => [1, 2],
-        ];
-    }
 
     /**
      * Compute and return the current game progression.
@@ -141,24 +100,24 @@ class Game extends \Table
         return 0;
     }
 
-    /**
-     * Game state action, example content.
-     *
-     * The action method of state `nextPlayer` is called everytime the current game state is set to `nextPlayer`.
-     */
-    public function stNextPlayer(): void {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
-
-        // Give some extra time to the active player when he completed an action
-        $this->giveExtraTime($player_id);
-        
-        $this->activeNextPlayer();
-
-        // Go to another gamestate
-        // Here, we would detect if the game is over, and in this case use "endGame" transition instead 
-        $this->gamestate->nextState("nextPlayer");
-    }
+//L    /**
+//L     * Game state action, example content.
+//L     *
+//L     * The action method of state `nextPlayer` is called everytime the current game state is set to `nextPlayer`.
+//L     */
+//L    public function stNextPlayer(): void {
+//L        // Retrieve the active player ID.
+//L        $player_id = (int)$this->getActivePlayerId();
+//L
+//L        // Give some extra time to the active player when he completed an action
+//L        $this->giveExtraTime($player_id);
+//L        
+//L        $this->activeNextPlayer();
+//L
+//L        // Go to another gamestate
+//L        // Here, we would detect if the game is over, and in this case use "endGame" transition instead 
+//L        $this->gamestate->nextState("nextPlayer");
+//L    }
 
     /**
      * Migrate database.
@@ -262,26 +221,109 @@ class Game extends \Table
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
 
-        // Init global values with their initial values.
-
-        // Dummy content.
-        $this->setGameStateInitialValue("my_first_global_variable", 0);
-
-        // Init game statistics.
-        //
-        // NOTE: statistics used in this file must be defined in your `stats.inc.php` file.
-
-        // Dummy content.
-        // $this->initStat("table", "table_teststat1", 0);
-        // $this->initStat("player", "player_teststat1", 0);
-
         // TODO: Setup the initial game situation here.
 
         // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();
     }
 
-    /**
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	//	Game State Actions	
+	//
+	public function stTravelHelper()
+	{
+	}
+
+	public function stCreationHelper()
+	{
+
+	}
+	
+	public function stEmergence()
+	{
+
+	}
+
+	public function stFinalCreationHelper()
+	{
+
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	//	Arg Functions:	
+	//
+//	public function argTravelPhase()
+//	{
+//		return array();
+//	}
+//
+//	public function argCreationPhase()
+//	{
+//		return array();
+//	}
+
+
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	//	Auto-wired Actions:
+	//
+	public function actMoveSleeper()
+	{
+
+	}
+
+	public function actCollectShard()
+	{
+
+	}
+
+	public function actLocationAbility()
+	{
+
+	}
+
+	public function actCardAbility()
+	{
+
+	}
+	
+	public function actPass(): void
+    {
+        // Retrieve the active player ID.
+        $player_id = (int)$this->getActivePlayerId();
+
+	}
+
+	public function actPlaceElement()
+	{
+
+	}
+
+	public function actDiscardShard()
+	{
+
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	//	Helper/Utility functions	
+	//
+	private function startNextPlayer() : boolean
+	{	
+		$player_id = (int)$this->getActivePlayerId();
+		$turn_order = $this->getCollectionFromDb("SELECT player_id, custom_order FROM player", true);
+		if ($turn_order[$player_id] == getPlayersNumber())
+			return false;
+
+
+		return true;
+	}
+
+
+
+		/**
      * This method is called each time it is the turn of a player who has quit the game (= "zombie" player).
      * You can do whatever you want in order to make sure the turn of this player ends appropriately
      * (ex: pass).
