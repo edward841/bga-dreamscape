@@ -151,6 +151,10 @@ function (dojo, declare) {
                      case 'creationPhase':    
                          this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
                          break;
+                     case 'finalCreationPhase':    
+                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
+                         break;
+
                 }
             }
         },        

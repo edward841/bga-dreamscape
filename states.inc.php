@@ -58,7 +58,7 @@ if (!defined('END_GAME'))
     define('CREATION_PHASE', 20);
     define('CREATION_HELPER', 21);
     define('EMERGENCE', 30);
-    define('FINAL_CREATION', 40);
+    define('FINAL_CREATION_PHASE', 40);
     define('FINAL_CREATION_HELPER', 41);
     define('END_GAME', 99);
 }
@@ -143,15 +143,15 @@ $machinestates = [
         "description" => '',
         "type" => "game",
         "action" => "stEmergence",
-        "transitions" => ["nextRound" => TRAVEL_PHASE, "finalStages" => FINAL_CREATION]
+        "transitions" => ["nextRound" => TRAVEL_PHASE, "finalStages" => FINAL_CREATION_PHASE]
     ],
 
-    FINAL_CREATION => [
-        "name" => "finalCreation",
+    FINAL_CREATION_PHASE => [
+        "name" => "finalCreationPhase",
         "description" => clienttranslate('${actplayer} must use the last of their shards'),
         "descriptionmyturn" => clienttranslate('${you} must use the last of your shards'),
         "type" => "activeplayer",
-        "possibleactions" => ["actPlaceElement", "actDiscardShard"], 
+        "possibleactions" => ["actPlaceElement", "actDiscardShard", "actPass"], 
         "transitions" => ["" => FINAL_CREATION_HELPER]
     ],
 
@@ -161,7 +161,7 @@ $machinestates = [
         "type" => "game",
         "action" => "stFinalCreationHelper",
         "updateGameProgression" => true,
-        "transitions" => ["nextPlayer" => FINAL_CREATION, "endGame" => END_GAME]
+        "transitions" => ["nextPlayer" => FINAL_CREATION_PHASE, "endGame" => END_GAME]
     ],
 
     // Final state.

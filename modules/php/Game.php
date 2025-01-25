@@ -39,9 +39,14 @@ class Game extends \Table
         $this->initGameStateLabels([
             "my_first_global_variable" => 10,
             "my_second_global_variable" => 11,
-            "my_first_game_variant" => 100,
+			
+			"current_round_number" => 20,
+			"final_round_number" => 21,
+			
+			"my_first_game_variant" => 100,
             "my_second_game_variant" => 101,
         ]);        
+
 
     }
 
@@ -165,8 +170,11 @@ class Game extends \Table
         $this->reloadPlayersBasicInfos();
 
         // TODO: Setup the initial game situation here.
-
-        // Activate first player once everything has been initialized and ready.
+		$this->setGameStateInitialValue("current_round_number", 1);
+		$this->setGameStateInitialValue("final_round_number", 3);
+		
+		
+		// Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();
     }
 
@@ -179,15 +187,13 @@ class Game extends \Table
 		$player_id = (int)$this->getActivePlayerId();
 		$this->giveExtraTime($player_id);
 
-		$this->activeNextPlayer();
-
 		// If anyone has not yet had a travel phase, give them a chance.
 		// If everyone has completed their travel phase, instead move on to the creation phase.
-
-
+		$this->activeNextPlayer();
+		
 		$turn_order = $this->getCollectionFromDb("SELECT player_id, player_no FROM player", true);
 		if ((int)$turn_order[$player_id] < $this->getPlayersNumber())
-    		$this->gamestate->nextState("nextPlayer");	
+			$this->gamestate->nextState("nextPlayer");	
 		else
 			$this->gamestate->nextState("nextPhase");
 	}
@@ -204,8 +210,11 @@ class Game extends \Table
 	{
 		// If there are still rounds to play (we are not on round 6 yet), then start another round.
 		// If it is the final round (round 6), then move on to the game's final stages.
-		if (true)
+		if ($this->getGameStateValue("current_round_number") < $this->getGameStateValue("final_round_number"))
+		{
+			$this->incGameStateValue("current_round_number", 1);
 			$this->gamestate->nextState("nextRound");
+		}
 		else
 			$this->gamestate->nextState("finalStages");	
 	}
@@ -213,6 +222,18 @@ class Game extends \Table
 	public function stFinalCreationHelper()
 	{
 
+		$player_id = (int)$this->getActivePlayerId();
+		$this->giveExtraTime($player_id);
+
+		// If anyone has not yet had a travel phase, give them a chance.
+		// If everyone has completed their travel phase, instead move on to the creation phase.
+		$this->activeNextPlayer();
+		
+		$turn_order = $this->getCollectionFromDb("SELECT player_id, player_no FROM player", true);
+		if ((int)$turn_order[$player_id] < $this->getPlayersNumber())
+			$this->gamestate->nextState("nextPlayer");	
+		else
+			$this->gamestate->nextState("endGame");
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
