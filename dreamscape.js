@@ -145,16 +145,16 @@ function (dojo, declare) {
             {            
                 switch( stateName )
                 {
-                 case 'playerTurn':    
-                    const playableCardsIds = args.playableCardsIds; // returned by the argPlayerTurn
+                     case 'travelPhase':    
+                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
+                         break;
+                     case 'creationPhase':    
+                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
+                         break;
+                     case 'finalCreationPhase':    
+                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
+                         break;
 
-                    // Add test action buttons in the action status bar, simulating a card click:
-                    playableCardsIds.forEach(
-                        cardId => this.addActionButton(`actPlayCard${cardId}-btn`, _('Play card with id ${card_id}').replace('${card_id}', cardId), () => this.onCardClick(cardId))
-                    ); 
-
-                    this.addActionButton('actPass-btn', _('Pass'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
-                    break;
                 }
             }
         },        

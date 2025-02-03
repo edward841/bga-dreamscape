@@ -22,8 +22,6 @@ require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
 class Game extends \Table
 {
-    private static array $CARD_TYPES;
-
     /**
      * Your global variables labels:
      *
@@ -41,87 +39,15 @@ class Game extends \Table
         $this->initGameStateLabels([
             "my_first_global_variable" => 10,
             "my_second_global_variable" => 11,
-            "my_first_game_variant" => 100,
+			
+			"current_round_number" => 20,
+			"final_round_number" => 21,
+			
+			"my_first_game_variant" => 100,
             "my_second_game_variant" => 101,
         ]);        
 
-        self::$CARD_TYPES = [
-            1 => [
-                "card_name" => clienttranslate('Troll'), // ...
-            ],
-            2 => [
-                "card_name" => clienttranslate('Goblin'), // ...
-            ],
-            // ...
-        ];
-    }
 
-    /**
-     * Player action, example content.
-     *
-     * In this scenario, each time a player plays a card, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     *
-     * @throws BgaUserException
-     */
-    public function actPlayCard(int $card_id): void
-    {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
-
-        // check input values
-        $args = $this->argPlayerTurn();
-        $playableCardsIds = $args['playableCardsIds'];
-        if (!in_array($card_id, $playableCardsIds)) {
-            throw new \BgaUserException('Invalid card choice');
-        }
-
-        // Add your game logic to play a card here.
-        $card_name = self::$CARD_TYPES[$card_id]['card_name'];
-
-        // Notify all players about the card played.
-        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} plays ${card_name}'), [
-            "player_id" => $player_id,
-            "player_name" => $this->getActivePlayerName(),
-            "card_name" => $card_name,
-            "card_id" => $card_id,
-            "i18n" => ['card_name'],
-        ]);
-
-        // at the end of the action, move to the next state
-        $this->gamestate->nextState("playCard");
-    }
-
-    public function actPass(): void
-    {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
-
-        // Notify all players about the choice to pass.
-        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} passes'), [
-            "player_id" => $player_id,
-            "player_name" => $this->getActivePlayerName(),
-        ]);
-
-        // at the end of the action, move to the next state
-        $this->gamestate->nextState("pass");
-    }
-
-    /**
-     * Game state arguments, example content.
-     *
-     * This method returns some additional information that is very specific to the `playerTurn` game state.
-     *
-     * @return array
-     * @see ./states.inc.php
-     */
-    public function argPlayerTurn(): array
-    {
-        // Get some values from the current game situation from the database.
-
-        return [
-            "playableCardsIds" => [1, 2],
-        ];
     }
 
     /**
@@ -139,25 +65,6 @@ class Game extends \Table
         // TODO: compute and return the game progression
 
         return 0;
-    }
-
-    /**
-     * Game state action, example content.
-     *
-     * The action method of state `nextPlayer` is called everytime the current game state is set to `nextPlayer`.
-     */
-    public function stNextPlayer(): void {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
-
-        // Give some extra time to the active player when he completed an action
-        $this->giveExtraTime($player_id);
-        
-        $this->activeNextPlayer();
-
-        // Go to another gamestate
-        // Here, we would detect if the game is over, and in this case use "endGame" transition instead 
-        $this->gamestate->nextState("nextPlayer");
     }
 
     /**
@@ -244,9 +151,9 @@ class Game extends \Table
                 array_shift($default_colors),
                 $player["player_canal"],
                 addslashes($player["player_name"]),
-                addslashes($player["player_avatar"]),
+				addslashes($player["player_avatar"])
             ]);
-        }
+		}
 
         // Create players based on generic information.
         //
@@ -257,31 +164,192 @@ class Game extends \Table
                 "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES %s",
                 implode(",", $query_values)
             )
-        );
+		);
 
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
 
-        // Init global values with their initial values.
-
-        // Dummy content.
-        $this->setGameStateInitialValue("my_first_global_variable", 0);
-
-        // Init game statistics.
-        //
-        // NOTE: statistics used in this file must be defined in your `stats.inc.php` file.
-
-        // Dummy content.
-        // $this->initStat("table", "table_teststat1", 0);
-        // $this->initStat("player", "player_teststat1", 0);
-
         // TODO: Setup the initial game situation here.
+		// Set up round structure: current round and number of rounds
+		$this->setGameStateInitialValue("current_round_number", 1);
+		$this->setGameStateInitialValue("final_round_number", 3);
+			
+		// Set up for the custom turn order using a custom_order field in the player DB
+		$this->DbQuery("UPDATE `player` SET `custom_order`=`player_no`");
 
-        // Activate first player once everything has been initialized and ready.
-        $this->activeNextPlayer();
-    }
+		// Activate first player once everything has been initialized and ready.
+		$this->gamestate->changeActivePlayer(intval(array_keys($players)[0]));
+	}
 
-    /**
+	// Override the activeNextPlayer method to use the custom_order field instead of the standard player_no
+	public function activeNextPlayer()
+	{
+		$current_player = (int)$this->getActivePlayerId();	
+		$turn_order = $this->getCollectionFromDb("SELECT player_id, custom_order FROM player", true);
+		
+		// Determine the number of the next person in order
+		// It is current number + 1 except after the last player comes 1
+		$target_order = ($turn_order[$current_player] % $this->getPlayersNumber()) + 1;
+
+		foreach ($turn_order as $id => $order)
+		{
+			if ($order == $target_order)
+			{
+				$this->gamestate->changeActivePlayer($id);
+				break;
+			}
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	//	Game State Actions	
+	//
+	public function gameStateHelper($activePlayerForNextPhase, $nextPhaseTransition="nextPhase")
+	{
+		$player_id = (int)$this->getActivePlayerId();
+		$this->giveExtraTime($player_id);
+
+		// If anyone has not yet had a travel phase, give them a chance.
+		// If everyone has completed their travel phase, instead move on to the creation phase.
+		$previous_player_no = $this->getUniqueValueFromDb("SELECT custom_order FROM player WHERE player_id=$player_id");
+		if ((int)$previous_player_no < $this->getPlayersNumber())
+		{
+			$this->activeNextPlayer();
+			$this->gamestate->nextState("nextPlayer");	
+		}
+		else
+		{
+			if ($activePlayerForNextPhase)
+				$this->activeNextPlayer();
+			$this->gamestate->nextState($nextPhaseTransition);
+		}
+	}
+
+	// Very straightforward game type state.
+	// 1. Always make the next player active player
+	// 2. If the phase isnt over, give the next player a chance. 
+	// 3. Otherwise move on to the next phase	
+	public function stTravelHelper()
+	{
+		$this->gameStateHelper(true);
+	}
+
+	public function stCreationHelper()
+	{
+		// TODO I am quite certain the travel and creation helpers will be distinct.
+		// For now, they are functionally the same but I separated them here to make it clear they probably should be separate
+		// If this is still here when game logic is complete, then they can clearly be consolidated to one function
+		
+		// Now it is slightly distinct from stTravelHelper: It does not set the next player for the next phase
+		$this->gameStateHelper(false);
+	}
+	
+	public function stEmergence() 
+	{
+		// Restore step
+		
+		// Initiative step: Determine turn order for next round
+		// TODO Determine turn order and modify the custom_order fields to reflect new order
+		// For now we just shift the turn order by one for proof of concept.
+		$this->DbQuery("UPDATE `player` SET `custom_order`=`custom_order`%" . $this->getPlayersNumber() . "+1");
+		
+		// WARNING: You need to use changeActivePlayer not activeNextPlayer here
+		// 		(activeNextPlayer is just current player + 1, which probably won't be correct since we just adjusted all the custom_order fields)
+		$this->gamestate->changeActivePlayer($this->getUniqueValueFromDb("SELECT `player_id` FROM `player` WHERE `custom_order`=1"));
+
+		// If there are still rounds to play (we are not on round 6 yet), then start another round.
+		// If it is the final round (round 6), then move on to the game's final stages.
+		if ($this->getGameStateValue("current_round_number") < $this->getGameStateValue("final_round_number"))
+		{
+			$this->incGameStateValue("current_round_number", 1);
+			$this->gamestate->nextState("nextRound");
+		}
+		else
+			$this->gamestate->nextState("finalStages");	
+	}
+
+	public function stFinalCreationHelper()
+	{
+		$this->gameStateHelper(false, "endGame");
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	//	Arg Functions:	
+	//
+//	public function argTravelPhase()
+//	{
+//		return array();
+//	}
+//
+//	public function argCreationPhase()
+//	{
+//		return array();
+//	}
+
+
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	//	Auto-wired Actions:
+	//
+	public function actMoveSleeper()
+	{
+
+	}
+
+	public function actCollectShard()
+	{
+
+	}
+
+	public function actLocationAbility()
+	{
+
+	}
+
+	public function actCardAbility()
+	{
+
+	}
+	
+	public function actPass(): void
+    {
+        // Retrieve the active player ID.
+        //$player_id = (int)$this->getActivePlayerId();
+
+		// No transition necessary since there is only one transition out of active player states
+		$this->gamestate->nextState();
+	}
+
+	public function actPlaceElement()
+	{
+
+	}
+
+	public function actDiscardShard()
+	{
+
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	//
+	//	Helper/Utility functions	
+	//
+//	private function startNextPlayer() : boolean
+//	{	
+//		$player_id = (int)$this->getActivePlayerId();
+//		$turn_order = $this->getCollectionFromDb("SELECT player_id, custom_order FROM player", true);
+//		if ($turn_order[$player_id] == getPlayersNumber())
+//			return false;
+//
+//
+//		return true;
+//	}
+
+
+
+		/**
      * This method is called each time it is the turn of a player who has quit the game (= "zombie" player).
      * You can do whatever you want in order to make sure the turn of this player ends appropriately
      * (ex: pass).
