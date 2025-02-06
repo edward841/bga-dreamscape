@@ -6,3 +6,4 @@
 # Also ignore vim swap files
 *.swp
 
+*.nb

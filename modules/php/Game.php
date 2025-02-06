@@ -15,14 +15,12 @@
  * In this PHP file, you are going to defines the rules of the game.
  */
 declare(strict_types=1);
-
 namespace Bga\Games\Dreamscape;
-
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
 class Game extends \Table
 {
-    /**
+	/**
      * Your global variables labels:
      *
      * Here, you can assign labels to global variables you are using for this game. You can use any number of global
@@ -39,7 +37,8 @@ class Game extends \Table
         $this->initGameStateLabels([
             "my_first_global_variable" => 10,
             "my_second_global_variable" => 11,
-			
+
+			"location_max_shards" => 12, 		
 			"current_round_number" => 20,
 			"final_round_number" => 21,
 			
@@ -173,9 +172,12 @@ class Game extends \Table
 		// Set up round structure: current round and number of rounds
 		$this->setGameStateInitialValue("current_round_number", 1);
 		$this->setGameStateInitialValue("final_round_number", 3);
-			
+		$this->setGameStateInitialValue("location_max_shards", count($players) + 1);	
+
 		// Set up for the custom turn order using a custom_order field in the player DB
 		$this->DbQuery("UPDATE `player` SET `custom_order`=`player_no`");
+
+		$this->setupElements();	
 
 		// Activate first player once everything has been initialized and ready.
 		$this->gamestate->changeActivePlayer(intval(array_keys($players)[0]));
@@ -336,17 +338,62 @@ class Game extends \Table
 	//
 	//	Helper/Utility functions	
 	//
-//	private function startNextPlayer() : boolean
-//	{	
-//		$player_id = (int)$this->getActivePlayerId();
-//		$turn_order = $this->getCollectionFromDb("SELECT player_id, custom_order FROM player", true);
-//		if ($turn_order[$player_id] == getPlayersNumber())
-//			return false;
-//
-//
-//		return true;
-//	}
+	public function setupElements()
+	{
+		// Create initial supplies of the elements: initialize drawbag and number of trees.
+		$initialElements = ["green" => 20, "blue" => 28, "gray" => 23, "brown"=> 23, "white" => 15];
 
+		$initialElements["totalShards"] = array_sum($initialElements);
+		$initialElements["trees"] = $this->getPlayersNumber() * 3;
+		$this->globals->set("elements", $initialElements);
+
+		// Draw shards for the board
+		//$sql = "INSERT INTO `element` (element_type, element_color, element_zone, element_player_id, element_p, element_q, element_r, element_z) VALUES ";
+		$sql = "INSERT INTO `element` (element_type, element_color, element_zone, element_p, element_q) VALUES ";
+		$sqlShards = array();
+
+		$boardShards = $this->drawShards((int)$this->getGameStateValue('location_max_shards') * 6);
+		$this->debug("\n\n");
+		for ($location = 1; $location <= 6; $location++)
+		{
+			for ($slot = 1; $slot <= (int)$this->getGameStateValue('location_max_shards'); $slot++)
+			{
+				$sqlShards[] = "('shard', '".array_pop($boardShards)."', 'dreamworld', '$location', '$slot')";
+			}
+		}
+		$sql .= implode(',', $sqlShards);
+		$this->debug("\n\n");
+		$this->DbQuery($sql);
+	}
+
+	public function drawShards(int $quantity)
+	{
+		if ($quantity <= 0)
+			return array();
+
+		$elements = $this->globals->get("elements");
+		$outputShards = array();
+		$colors = ["green", "blue", "gray", "brown", "white"];
+		
+		while ($quantity-- > 0)
+		{
+			$index = \bga_rand(1, $elements["totalShards"]);
+			foreach ($colors as $color)
+			{
+				$index -= $elements[$color];
+				if ($index <= 0)
+				{
+					array_push($outputShards, $color);
+					$elements[$color]--;
+					$elements["totalShards"]--;
+					break;
+				}
+			}
+		}	
+
+		$this->globals->set("elements", $elements);	
+		return $outputShards;
+	}
 
 
 		/**

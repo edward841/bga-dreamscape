@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS `element` (
   `element_type` varchar(8) NOT NULL,
   `element_color` varchar(10) NOT NULL,
   `element_zone` varchar(10) NOT NULL,
-  `element_player_id` int(11) NOT NULL,
+  `element_player_id` int(11) NOT NULL DEFAULT '0',
   `element_p` TINYINT NOT NULL DEFAULT '0',
   `element_q` TINYINT NOT NULL DEFAULT '0',
   `element_r` TINYINT NOT NULL DEFAULT '0',
