@@ -76,30 +76,6 @@ $machinestates = [
     ),
 
     // Note: ID=2 => your first state
-
-//    2 => [
-//        "name" => "playerTurn",
-//        "description" => clienttranslate('${actplayer} must play a card or pass'),
-//        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
-//        "type" => "activeplayer",
-//        "args" => "argPlayerTurn",
-//        "possibleactions" => [
-//            // these actions are called from the front with bgaPerformAction, and matched to the function on the game.php file
-//            "actPlayCard", 
-//            "actPass",
-//        ],
-//        "transitions" => ["playCard" => 3, "pass" => 3]
-//    ],
-//
-//    3 => [
-//        "name" => "nextPlayer",
-//        "description" => '',
-//        "type" => "game",
-//        "action" => "stNextPlayer",
-//        "updateGameProgression" => true,
-//        "transitions" => ["endGame" => END_GAME, "nextPlayer" => 2]
-//    ],
-//
     TRAVEL_PHASE => [
         "name" => "travelPhase",
         "description" => clienttranslate('${actplayer} must do their travel phase'),
@@ -125,7 +101,7 @@ $machinestates = [
         "descriptionmyturn" => clienttranslate('${you} must do your creation phase'),
         "type" => "activeplayer",
 //        "args" => "argCreationPhase",
-        "possibleactions" => ["actPlaceElement", "actPlaceDreamer", "actDiscardShard", "actCardAbility", "actPass"],
+        "possibleactions" => ["actPlaceElement", "actPlaceDreamer", "actDiscardShards", "actCardAbility", "actPass"],
         "transitions" => ["" => CREATION_HELPER]
     ],
     
@@ -151,7 +127,7 @@ $machinestates = [
         "description" => clienttranslate('${actplayer} must use the last of their shards'),
         "descriptionmyturn" => clienttranslate('${you} must use the last of your shards'),
         "type" => "activeplayer",
-        "possibleactions" => ["actPlaceElement", "actDiscardShard", "actPass"], 
+        "possibleactions" => ["actPlaceElement", "actDiscardShards", "actPass"], 
         "transitions" => ["" => FINAL_CREATION_HELPER]
     ],
 

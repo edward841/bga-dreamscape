@@ -145,12 +145,13 @@ class Game extends \Table
 
         foreach ($players as $player_id => $player) {
             // Now you can access both $player_id and $player array
-            $query_values[] = vsprintf("('%s', '%s', '%s', '%s', '%s')", [
+            $query_values[] = vsprintf("('%s', '%s', '%s', '%s', '%s', '%d')", [
                 $player_id,
                 array_shift($default_colors),
                 $player["player_canal"],
                 addslashes($player["player_name"]),
-				addslashes($player["player_avatar"])
+				addslashes($player["player_avatar"]),
+				4
             ]);
 		}
 
@@ -160,7 +161,7 @@ class Game extends \Table
         // additional fields directly here.
         static::DbQuery(
             sprintf(
-                "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES %s",
+                "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, action_points) VALUES %s",
                 implode(",", $query_values)
             )
 		);
@@ -175,7 +176,7 @@ class Game extends \Table
 		$this->setGameStateInitialValue("location_max_shards", count($players) + 1);	
 
 		// Set up for the custom turn order using a custom_order field in the player DB
-		$this->DbQuery("UPDATE `player` SET `custom_order`=`player_no`");
+		$this->DbQuery("UPDATE `player` SET `custom_order`=`player_no`, `sleeper`=`player_no`");
 
 		$this->setupElements();	
 
@@ -291,18 +292,47 @@ class Game extends \Table
 //	}
 
 
-	/////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
 	//
 	//	Auto-wired Actions:
 	//
-	public function actMoveSleeper()
+	public function actMoveSleeper($newLocation)
 	{
-
+		$playerId = $this->getActivePlayerId();
+		$this->DbQuery("UPDATE player SET sleeper='$newLocation' WHERE player_id='$playerId'");
+		$this->travelPhaseActionCleanup($playerId);
 	}
 
+	/**
+	 * actCollectShard is one of the actions a player can perform during the travel phase. The player gains the rightmost shard available at their current collection and adds it to their hands.
+	 */
 	public function actCollectShard()
 	{
+		$playerId = intval($this->getActivePlayerId());
+		$location = $this->getUniqueValueFromDB("SELECT sleeper FROM player WHERE player_id='$playerId'");
 
+		// For shards on the board, zone is dreamworld, p is the location number, and q is the index (1 is leftmost)
+		$availableShards = $this->getCollectionFromDB("SELECT element_id, element_q FROM element WHERE element_zone='dreamworld' AND element_p='$location'", true);	
+		
+		// If there are no shards, then this action cannot be completed.
+		if (count($availableShards) == 0)
+		{
+			return;
+		}
+		$this->debug("\n\nlocation=$location\n");
+		// Determine which shard is the rightmost one (i.e. greatest q)
+		foreach ($availableShards as $id => $index)
+		{
+			if ((int) $index == count($availableShards))
+			{
+				$this->debug("HELLO!\n");
+				$this->DbQuery("UPDATE element SET element_zone='hands', element_player_id='$playerId', element_p='0', element_q='0' WHERE element_id='$id'");			
+				break;
+			}
+		}
+
+		// Decrement action points. End the player's turn if they used all of their action points.
+		$this->travelPhaseActionCleanup($playerId);
 	}
 
 	public function actLocationAbility()
@@ -329,9 +359,9 @@ class Game extends \Table
 
 	}
 
-	public function actDiscardShard()
+	public function actDiscardShards($shardIds)
 	{
-
+		$this->discardShards($shardIds);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -353,7 +383,6 @@ class Game extends \Table
 		$sqlShards = array();
 
 		$boardShards = $this->drawShards((int)$this->getGameStateValue('location_max_shards') * 6);
-		$this->debug("\n\n");
 		for ($location = 1; $location <= 6; $location++)
 		{
 			for ($slot = 1; $slot <= (int)$this->getGameStateValue('location_max_shards'); $slot++)
@@ -362,7 +391,6 @@ class Game extends \Table
 			}
 		}
 		$sql .= implode(',', $sqlShards);
-		$this->debug("\n\n");
 		$this->DbQuery($sql);
 	}
 
@@ -393,6 +421,50 @@ class Game extends \Table
 
 		$this->globals->set("elements", $elements);	
 		return $outputShards;
+	}
+
+	// Return the specified shards back to the bag. Regardless of whose turn it is and where the shards are.
+	// Not quite the same as the players discard shards action
+	private function discardShards($shardIds)
+	{
+		// If the input is not an array but a single value, make an array with just that value
+		if (!is_array($shardIds))
+			$shardIds = array($shardIds);
+		else if (count($shardIds) == 0)
+			return;
+		
+		// Remove the shards from the element table
+		$domain = "('".implode("' , '", $shardIds)."')";
+		$shards = $this->getCollectionFromDB("SELECT element_id, element_color FROM element WHERE element_id IN $domain", true);
+		$this->DbQuery("DELETE FROM element WHERE element_id IN $domain");
+
+		// Add the shards back into the bag
+		$unusedElements = $this->globals->get("elements");
+		$unusedElements["totalShards"] += count($shards);
+		foreach (array_values($shards) as $color)
+		{
+			$unusedElements[$color]++;	
+		}
+		$this->globals->set("elements", $unusedElements);	
+	}
+
+	// Decrement action points. End the player's turn if they used all of their action points.
+	private function travelPhaseActionCleanup($playerId)
+	{
+		// get players current action points and subtract one for the action they just used.	
+		$actionPoints = (int) $this->getUniqueValueFromDB("SELECT action_points FROM player WHERE player_id='$playerId'") - 1;
+		// If the player used all their action points, reset it to 4 for next round.
+		if ($actionPoints == 0)
+			$actionPoints = 4;
+
+		// Update the database to reflect the new value
+		$this->DbQuery("UPDATE player SET action_points='$actionPoints' WHERE player_id='$playerId'");
+
+		// If the player used all their action points, move on to the next state.
+		if ($actionPoints == 4)
+		{
+			$this->gamestate->nextState();
+		}
 	}
 
 
