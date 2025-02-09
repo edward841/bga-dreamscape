@@ -137,23 +137,28 @@ function (dojo, declare) {
         // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
         //                        action status bar (ie: the HTML links in the status bar).
         //        
-        onUpdateActionButtons: function( stateName, args )
+		onUpdateActionButtons: function( stateName, args )
         {
             console.log( 'onUpdateActionButtons: '+stateName, args );
-                      
+			        	              
             if( this.isCurrentPlayerActive() )
             {            
                 switch( stateName )
                 {
-                     case 'travelPhase':    
-                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
-                         break;
-                     case 'creationPhase':    
-                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
-                         break;
-                     case 'finalCreationPhase':    
-                         this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
-                         break;
+                    case 'travelPhase':
+						if (args.possibleMoves.collectShard)
+							this.addActionButton('actCollectShard-btn', _('Collect Shard'), () => this.bgaPerformAction("actCollectShard"), null, null, 'gray');
+						this.addMovementActionButtons(args);
+						if (args.possibleMoves.locationAbility)
+							this.addActionButton('actLocationAbility-btn', _('Use Location Ability'), () => this.bgaPerformAction("actLocationAbility"), null, null, 'gray');
+                        this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray');
+						break;
+                    case 'creationPhase':    
+                        this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
+                        break;
+                    case 'finalCreationPhase':    
+                        this.addActionButton('actPass-btn', _('Pass my turn'), () => this.bgaPerformAction("actPass"), null, null, 'gray'); 
+                        break;
 
                 }
             }
@@ -168,6 +173,15 @@ function (dojo, declare) {
             script.
         
         */
+		addMovementActionButtons: function(args)
+		{
+			for (let locationNumber of args.possibleMoves.sleeper)
+			{
+				bttnText = args.possibleMoves.keystones.includes(locationNumber) ? `Key movement: move sleeper to location ${locationNumber}` : `Move sleeper to location ${locationNumber}`;
+				
+				this.addActionButton(`actMoveSleeper${locationNumber}-btn`, _(bttnText), () => this.bgaPerformAction('actMoveSleeper', {newLocation: locationNumber}), null, null, 'gray');
+			}
+		},
 
 
         ///////////////////////////////////////////////////

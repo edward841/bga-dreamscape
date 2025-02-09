@@ -81,7 +81,7 @@ $machinestates = [
         "description" => clienttranslate('${actplayer} must do their travel phase'),
         "descriptionmyturn" => clienttranslate('${you} must do your travel phase'),
         "type" => "activeplayer",
-//        "args" => "argTravelPhase", // Information is definitely needed here, about just about everything.
+        "args" => "argTravelPhase", // Information is definitely needed here, about just about everything.
         "possibleactions" => ["actMoveSleeper", "actCollectShard", "actLocationAbility", "actCardAbility", "actPass"],
         "transitions" => ["" => TRAVEL_HELPER]
     ],
@@ -100,7 +100,7 @@ $machinestates = [
         "description" => clienttranslate('${actplayer} must do their creation phase'),
         "descriptionmyturn" => clienttranslate('${you} must do your creation phase'),
         "type" => "activeplayer",
-//        "args" => "argCreationPhase",
+        "args" => "argCreationPhase",
         "possibleactions" => ["actPlaceElement", "actPlaceDreamer", "actDiscardShards", "actCardAbility", "actPass"],
         "transitions" => ["" => CREATION_HELPER]
     ],

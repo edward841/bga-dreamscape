@@ -35,7 +35,7 @@
 
 ALTER TABLE `player` ADD `custom_order` TINYINT UNSIGNED NOT NULL DEFAULT '0';
 ALTER TABLE `player` ADD `action_points` TINYINT UNSIGNED NOT NULL DEFAULT '0';
-ALTER TABLE `player` ADD `used_location` BOOL DEFAULT true;
+ALTER TABLE `player` ADD `used_location` BOOL DEFAULT false;
 ALTER TABLE `player` ADD `sleeper` TINYINT UNSIGNED NOT NULL DEFAULT '1';
 
 CREATE TABLE IF NOT EXISTS `card` (

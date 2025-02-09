@@ -145,7 +145,7 @@ class Game extends \Table
 
         foreach ($players as $player_id => $player) {
             // Now you can access both $player_id and $player array
-            $query_values[] = vsprintf("('%s', '%s', '%s', '%s', '%s', '%d')", [
+			$query_values[] = vsprintf("('%s', '%s', '%s', '%s', '%s', '%d')", [
                 $player_id,
                 array_shift($default_colors),
                 $player["player_canal"],
@@ -281,26 +281,84 @@ class Game extends \Table
 	//
 	//	Arg Functions:	
 	//
-//	public function argTravelPhase()
-//	{
-//		return array();
-//	}
-//
-//	public function argCreationPhase()
-//	{
-//		return array();
-//	}
+	public function argTravelPhase()
+	{
+		// General info
+		$playerId = $this->getActivePlayerId();
+		$playerRow = $this->getObjectFromDB("SELECT sleeper, used_location, action_points FROM player WHERE player_id='$playerId'");
+		$shardsInHands = $this->getCollectionFromDB("SELECT element_id, element_color FROM element WHERE element_player_id='$playerId' AND element_type='shard' AND element_zone='hands'", true);
+		$possibleMoves = array();
+		
+		// Collect Shard: The player's current location must have shards, and the player must have less than two shards of that particular color in their hand 
+		// By default assume you cannot collect the shard. If the move is allowed, set it to true later
+		$possibleMoves["collectShard"] = false;
+		$currentLocationsShards = $this->getCollectionFromDB("SELECT element_id, element_color, element_q FROM element WHERE element_type='shard' AND element_zone='dreamworld' AND element_p='".$playerRow['sleeper']."'");
+		// First ensure the current location has shards available...
+		if (count($currentLocationsShards) > 0)
+		{
+			if (count($shardsInHands) < 2)
+				// No need to worry about having two of the matching color already, so you can collect shard
+				$possibleMoves["collectShard"] = true;
+			else
+			{
+				// Determine target color (what color is the rightmost shard?)
+				$matchingShards = 0;
+				$targetColor;
+				foreach ($currentLocationsShards as $shardInfo)  
+				{
+					if ($shardInfo['element_q'] == count($currentLocationsShards))
+					{
+						$targetColor = $shardInfo['element_color'];
+						break;
+					}
+				}
+				
+				// Now count how many shards the player has in their hands of that color
+				foreach ($shardsInHands as $color)
+					if ($color == $targetColor) $matchingShards++;
+
+				if ($matchingShards < 2)
+					$possibleMoves['collectShard'] = true;	
+			}
+		}
+
+		// Move sleeper: Determine which locations are adjacent to the sleeper
+		$adjacencies = [1 => [2,4], 2 => [1,3,5], 3 => [2,6], 4 => [1,5], 5 => [2,4,6], 6 => [3,5]];
+		$possibleMoves['sleeper'] = $adjacencies[(int) $playerRow['sleeper']];
+
+		// Key movements: Check if any of the available moves are free based on the keystone
+		$keystones = $this->getCollectionFromDB("SELECT element_id, element_p FROM element WHERE element_type='shard' AND element_zone='dreamworld' AND element_q='1' AND element_color IN ('".implode("' , '", array_values($shardsInHands))."')", true);
+		$possibleMoves['keystones'] = array_map('intval', array_values($keystones));
+
+		// Use current location ability: Determine whether the player can use the current location's ability
+		$possibleMoves["locationAbility"] = !$playerRow["used_location"];
+
+		// Use player dreamcard abilities: Determine what dreamcard abilities the player can currently use
+
+		return array("possibleMoves" => $possibleMoves);
+	}
+
+	public function argCreationPhase()
+	{
+		return array();
+	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	//
 	//	Auto-wired Actions:
 	//
-	public function actMoveSleeper($newLocation)
+	public function actMoveSleeper(int $newLocation)
 	{
 		$playerId = $this->getActivePlayerId();
+		$args = $this->argTravelPhase();
+		if (!in_array($newLocation, $args['possibleMoves']['sleeper']))
+			return;
+
 		$this->DbQuery("UPDATE player SET sleeper='$newLocation' WHERE player_id='$playerId'");
-		$this->travelPhaseActionCleanup($playerId);
+
+		if (!in_array($newLocation, $args['possibleMoves']['keystones']))
+			$this->travelPhaseActionCleanup($playerId);
 	}
 
 	/**
@@ -319,7 +377,7 @@ class Game extends \Table
 		{
 			return;
 		}
-		$this->debug("\n\nlocation=$location\n");
+		
 		// Determine which shard is the rightmost one (i.e. greatest q)
 		foreach ($availableShards as $id => $index)
 		{
@@ -334,10 +392,18 @@ class Game extends \Table
 		// Decrement action points. End the player's turn if they used all of their action points.
 		$this->travelPhaseActionCleanup($playerId);
 	}
-
+	
+	// TODO Implement abilities...
 	public function actLocationAbility()
 	{
+		$playerId = $this->getActivePlayerId();
+		$playerRow = $this->getObjectFromDB("SELECT sleeper, used_location FROM player WHERE player_id='$playerId'");
+		if ((int) $playerRow['used_location'])
+			return;
 
+		// TODO: Perform the ability of the players current location
+
+		$this->DbQuery("UPDATE player SET used_location='1' WHERE player_id='$playerId'");
 	}
 
 	public function actCardAbility()
