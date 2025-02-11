@@ -53,9 +53,9 @@ CREATE TABLE IF NOT EXISTS `element` (
   `element_color` varchar(10) NOT NULL,
   `element_zone` varchar(10) NOT NULL,
   `element_player_id` int(11) NOT NULL DEFAULT '0',
-  `element_p` TINYINT NOT NULL DEFAULT '0',
   `element_q` TINYINT NOT NULL DEFAULT '0',
   `element_r` TINYINT NOT NULL DEFAULT '0',
+  `element_s` TINYINT NOT NULL DEFAULT '0',
   `element_z` TINYINT NOT NULL DEFAULT '0',
   PRIMARY KEY (`element_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;

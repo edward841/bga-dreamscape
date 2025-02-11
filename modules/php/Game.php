@@ -292,7 +292,7 @@ class Game extends \Table
 		// Collect Shard: The player's current location must have shards, and the player must have less than two shards of that particular color in their hand 
 		// By default assume you cannot collect the shard. If the move is allowed, set it to true later
 		$possibleMoves["collectShard"] = false;
-		$currentLocationsShards = $this->getCollectionFromDB("SELECT element_id, element_color, element_q FROM element WHERE element_type='shard' AND element_zone='dreamworld' AND element_p='".$playerRow['sleeper']."'");
+		$currentLocationsShards = $this->getCollectionFromDB("SELECT element_id, element_color, element_r FROM element WHERE element_type='shard' AND element_zone='dreamworld' AND element_q='".$playerRow['sleeper']."'");
 		// First ensure the current location has shards available...
 		if (count($currentLocationsShards) > 0)
 		{
@@ -306,7 +306,7 @@ class Game extends \Table
 				$targetColor;
 				foreach ($currentLocationsShards as $shardInfo)  
 				{
-					if ($shardInfo['element_q'] == count($currentLocationsShards))
+					if ($shardInfo['element_r'] == count($currentLocationsShards))
 					{
 						$targetColor = $shardInfo['element_color'];
 						break;
@@ -327,7 +327,7 @@ class Game extends \Table
 		$possibleMoves['sleeper'] = $adjacencies[(int) $playerRow['sleeper']];
 
 		// Key movements: Check if any of the available moves are free based on the keystone
-		$keystones = $this->getCollectionFromDB("SELECT element_id, element_p FROM element WHERE element_type='shard' AND element_zone='dreamworld' AND element_q='1' AND element_color IN ('".implode("' , '", array_values($shardsInHands))."')", true);
+		$keystones = $this->getCollectionFromDB("SELECT element_id, element_q FROM element WHERE element_type='shard' AND element_zone='dreamworld' AND element_r='1' AND element_color IN ('".implode("' , '", array_values($shardsInHands))."')", true);
 		$possibleMoves['keystones'] = array_map('intval', array_values($keystones));
 
 		// Use current location ability: Determine whether the player can use the current location's ability
@@ -370,7 +370,7 @@ class Game extends \Table
 		$location = $this->getUniqueValueFromDB("SELECT sleeper FROM player WHERE player_id='$playerId'");
 
 		// For shards on the board, zone is dreamworld, p is the location number, and q is the index (1 is leftmost)
-		$availableShards = $this->getCollectionFromDB("SELECT element_id, element_q FROM element WHERE element_zone='dreamworld' AND element_p='$location'", true);	
+		$availableShards = $this->getCollectionFromDB("SELECT element_id, element_r FROM element WHERE element_zone='dreamworld' AND element_q='$location'", true);	
 		
 		// If there are no shards, then this action cannot be completed.
 		if (count($availableShards) == 0)
@@ -384,7 +384,7 @@ class Game extends \Table
 			if ((int) $index == count($availableShards))
 			{
 				$this->debug("HELLO!\n");
-				$this->DbQuery("UPDATE element SET element_zone='hands', element_player_id='$playerId', element_p='0', element_q='0' WHERE element_id='$id'");			
+				$this->DbQuery("UPDATE element SET element_zone='hands', element_player_id='$playerId', element_q='0', element_r='0' WHERE element_id='$id'");			
 				break;
 			}
 		}
@@ -444,8 +444,8 @@ class Game extends \Table
 		$this->globals->set("elements", $initialElements);
 
 		// Draw shards for the board
-		//$sql = "INSERT INTO `element` (element_type, element_color, element_zone, element_player_id, element_p, element_q, element_r, element_z) VALUES ";
-		$sql = "INSERT INTO `element` (element_type, element_color, element_zone, element_p, element_q) VALUES ";
+		//$sql = "INSERT INTO `element` (element_type, element_color, element_zone, element_player_id, element_q, element_r, element_s, element_z) VALUES ";
+		$sql = "INSERT INTO `element` (element_type, element_color, element_zone, element_q, element_r) VALUES ";
 		$sqlShards = array();
 
 		$boardShards = $this->drawShards((int)$this->getGameStateValue('location_max_shards') * 6);
