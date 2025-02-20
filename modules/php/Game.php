@@ -17,6 +17,7 @@
 declare(strict_types=1);
 namespace Bga\Games\Dreamscape;
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
+require_once('dreamscape.php');
 
 class Game extends \Table
 {
@@ -182,6 +183,7 @@ class Game extends \Table
 
 		// Activate first player once everything has been initialized and ready.
 		$this->gamestate->changeActivePlayer(intval(array_keys($players)[0]));
+
 	}
 
 	// Override the activeNextPlayer method to use the custom_order field instead of the standard player_no
@@ -301,6 +303,7 @@ class Game extends \Table
 				$possibleMoves["collectShard"] = true;
 			else
 			{
+				// We do have to make sure we dont already have too many of that color...
 				// Determine target color (what color is the rightmost shard?)
 				$matchingShards = 0;
 				$targetColor;
@@ -318,7 +321,7 @@ class Game extends \Table
 					if ($color == $targetColor) $matchingShards++;
 
 				if ($matchingShards < 2)
-					$possibleMoves['collectShard'] = true;	
+					$possibleMoves['collectShard'] = true;
 			}
 		}
 
@@ -338,11 +341,10 @@ class Game extends \Table
 		return array("possibleMoves" => $possibleMoves);
 	}
 
-	public function argCreationPhase()
+	function argCreationPhase()
 	{
-		return array();
+		return ['possibleMoves' => getPossibleMovesCreation()];
 	}
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	//
@@ -353,7 +355,7 @@ class Game extends \Table
 		$playerId = $this->getActivePlayerId();
 		$args = $this->argTravelPhase();
 		if (!in_array($newLocation, $args['possibleMoves']['sleeper']))
-			return;
+			throw new \BgaSystemException( "Impossible move" );
 
 		$this->DbQuery("UPDATE player SET sleeper='$newLocation' WHERE player_id='$playerId'");
 
@@ -375,7 +377,7 @@ class Game extends \Table
 		// If there are no shards, then this action cannot be completed.
 		if (count($availableShards) == 0)
 		{
-			return;
+			throw new \BgaSystemException( "Impossible move" );
 		}
 		
 		// Determine which shard is the rightmost one (i.e. greatest q)
@@ -383,7 +385,6 @@ class Game extends \Table
 		{
 			if ((int) $index == count($availableShards))
 			{
-				$this->debug("HELLO!\n");
 				$this->DbQuery("UPDATE element SET element_zone='hands', element_player_id='$playerId', element_q='0', element_r='0' WHERE element_id='$id'");			
 				break;
 			}
@@ -399,7 +400,7 @@ class Game extends \Table
 		$playerId = $this->getActivePlayerId();
 		$playerRow = $this->getObjectFromDB("SELECT sleeper, used_location FROM player WHERE player_id='$playerId'");
 		if ((int) $playerRow['used_location'])
-			return;
+			throw new \BgaSystemException( "Impossible move" );
 
 		// TODO: Perform the ability of the players current location
 
@@ -420,10 +421,6 @@ class Game extends \Table
 		$this->gamestate->nextState();
 	}
 
-	public function actPlaceElement()
-	{
-
-	}
 
 	public function actDiscardShards($shardIds)
 	{
